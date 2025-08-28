@@ -38,15 +38,34 @@ RUN apt-get update && \
         libceres-dev
 
 # Build and install COLMAP.
-RUN git clone https://github.com/colmap/colmap.git
+COPY colmap colmap
 RUN cd colmap && \
-    git fetch https://github.com/colmap/colmap.git ${COLMAP_GIT_COMMIT} && \
-    git checkout FETCH_HEAD && \
     mkdir build && \
     cd build && \
     cmake .. -GNinja -DCMAKE_CUDA_ARCHITECTURES=${CUDA_ARCHITECTURES} \
         -DCMAKE_INSTALL_PREFIX=/colmap-install && \
     ninja install
+
+# Build and install PoseLib.
+RUN git clone --recursive https://github.com/vlarsson/PoseLib.git
+RUN cd PoseLib && \
+    mkdir build && \
+    cd build && \
+    cmake .. -GNinja -DCMAKE_INSTALL_PREFIX=/PoseLib-install && \
+    ninja install
+
+# RUN git clone --recursive https://github.com/colmap/glomap.git
+COPY glomap_pose_prior glomap
+# Use the version of cmake>=3.10 (<3.28)
+COPY colmap/docker/CMakeListsGlomap.txt ./glomap/CMakeLists.txt 
+RUN cp -r /colmap-install/* /usr/local/
+RUN cp -r /PoseLib-install/* /usr/local/ 
+RUN cd glomap && \
+    mkdir build && \
+    cd build && \ 
+    cmake .. -GNinja -DCMAKE_CUDA_ARCHITECTURES=${CUDA_ARCHITECTURES} \
+        -DCMAKE_INSTALL_PREFIX=/glomap-install -DFETCH_COLMAP=False -DFETCH_POSELIB=False 
+RUN cd glomap/build && ninja install
 
 #
 # Docker runtime stage.
@@ -77,3 +96,5 @@ RUN apt-get update && \
 # a library. For instance, CMake will be able to find COLMAP easily with the
 # command: find_package(COLMAP REQUIRED).
 COPY --from=builder /colmap-install/ /usr/local/
+COPY --from=builder /PoseLib-install/ /usr/local/
+COPY --from=builder /glomap-install/ /usr/local/
