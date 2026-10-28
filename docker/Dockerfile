@@ -98,3 +98,7 @@ RUN apt-get update && \
 COPY --from=builder /colmap-install/ /usr/local/
 COPY --from=builder /PoseLib-install/ /usr/local/
 COPY --from=builder /glomap-install/ /usr/local/
+
+RUN apt-get update && \ apt-get install python3 python3-pip python-is-python3 && \
+    rm -rf /var/lib/apt/lists/*
+RUN pip install numpy
